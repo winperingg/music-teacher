@@ -53,3 +53,22 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 VAPID_PUBLIC_KEY = ""
 VAPID_PRIVATE_KEY = ""
 VAPID_ADMIN_EMAIL = "mailto:admin@email.com"
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+
+        'DIRS': [BASE_DIR / 'templates'],
+
+        'APP_DIRS': True,
+
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
