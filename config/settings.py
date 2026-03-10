@@ -30,6 +30,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+ROOT_URLCONF = 'config.urls'
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
