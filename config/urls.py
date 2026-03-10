@@ -4,7 +4,6 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 
-
 from .views import (
     inicio,
     dashboard,
@@ -23,7 +22,6 @@ from .views import (
     salvar_push_subscription,
     push_teste,
 )
-
 
 urlpatterns = [
 
@@ -50,8 +48,6 @@ urlpatterns = [
 
     path('push/subscribe/', salvar_push_subscription, name='salvar_push_subscription'),
     path('push/teste/', push_teste, name='push_teste'),
-
 ]
-
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
