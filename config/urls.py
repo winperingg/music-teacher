@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.urls import path
+
 from django.conf import settings
 from django.conf.urls.static import static
+
 
 from .views import (
     inicio,
@@ -22,7 +24,9 @@ from .views import (
     push_teste,
 )
 
+
 urlpatterns = [
+
     path('admin/', admin.site.urls),
 
     path('', inicio, name='inicio'),
@@ -43,7 +47,11 @@ urlpatterns = [
 
     path('financeiro/gerar-mensalidades/', gerar_mensalidades, name='gerar_mensalidades'),
     path('financeiro/pagar/<int:id>/', marcar_pago, name='marcar_pago'),
+
     path('push/subscribe/', salvar_push_subscription, name='salvar_push_subscription'),
     path('push/teste/', push_teste, name='push_teste'),
+
 ]
+
+
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
