@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <h1 class="mb-0">🎸 Dashboard</h1>
+
+    <a href="/financeiro/gerar-mensalidades/" class="btn btn-warning">
+        💰 Gerar mensalidades do mês
+    </a>
+    <a href="/push/teste/" class="btn btn-info">
+    🔔 Testar notificação
+</a>
+</div>
+
+<div class="row g-3 mb-4">
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Total de alunos</h6>
+                <h2>{{ total_alunos }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Pagamentos pagos</h6>
+                <h2>{{ pagamentos_pagos }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Pagamentos pendentes</h6>
+                <h2>{{ total_pendentes }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Faturamento</h6>
+                <h2>R$ {{ faturamento }}</h2>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+
+        <h5 class="mb-3">📊 Pagamentos</h5>
+
+        <canvas id="graficoPagamentos" height="100"></canvas>
+
+    </div>
+</div>
+
+{{ grafico_pagamentos|json_script:"grafico-pagamentos-data" }}
+
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+
+        <h5 class="mb-3">💰 Faturamento mensal</h5>
+
+        <canvas id="graficoFaturamentoMensal" height="100"></canvas>
+
+    </div>
+</div>
+
+{{ grafico_faturamento_mensal|json_script:"grafico-faturamento-mensal-data" }}
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+const dadosGrafico = JSON.parse(
+    document.getElementById("grafico-pagamentos-data").textContent
+);
+
+const ctx = document.getElementById("graficoPagamentos");
+
+new Chart(ctx, {
+
+    type: "bar",
+
+    data: {
+
+        labels: dadosGrafico.labels,
+
+        datasets: [
+            {
+                label: "Pagamentos",
+                data: dadosGrafico.valores
+            }
+        ]
+
+    }
+
+});
+
+
+const dadosFaturamentoMensal = JSON.parse(
+    document.getElementById("grafico-faturamento-mensal-data").textContent
+);
+
+const ctxMensal = document.getElementById("graficoFaturamentoMensal");
+
+new Chart(ctxMensal, {
+
+    type: "line",
+
+    data: {
+
+        labels: dadosFaturamentoMensal.labels,
+
+        datasets: [
+            {
+                label: "Faturamento mensal",
+                data: dadosFaturamentoMensal.valores,
+                tension: 0.3
+            }
+        ]
+
+    },
+
+    options: {
+        responsive: true
+    }
+
+});
+
+</script>
+
+
+<div class="row g-4">
+
+<div class="col-12 col-xl-5">
+
+<div class="card shadow-sm border-0 h-100">
+
+<div class="card-body">
+
+<h5 class="mb-3">📅 Aulas de hoje</h5>
+
+<ul class="list-group list-group-flush">
+
+{% for aula in aulas_hoje %}
+
+<li class="list-group-item">
+
+<strong>{{ aula.aluno }}</strong><br>
+
+<small class="text-muted">{{ aula.data }}</small>
+
+</li>
+
+{% empty %}
+
+<li class="list-group-item text-muted">
+Nenhuma aula hoje
+</li>
+
+{% endfor %}
+
+</ul>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="col-12 col-xl-7">
+
+<div class="card shadow-sm border-0 h-100">
+
+<div class="card-body">
+
+<h5 class="mb-3">⚠ Pagamentos pendentes</h5>
+
+<div class="table-responsive">
+
+<table class="table align-middle">
+
+<thead>
+
+<tr>
+
+<th>Aluno</th>
+
+<th>Valor</th>
+
+<th>Vencimento</th>
+
+<th>Ações</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for pagamento in pagamentos_pendentes %}
+
+<tr>
+
+<td>{{ pagamento.aluno.nome }}</td>
+
+<td>R$ {{ pagamento.valor }}</td>
+
+<td>{{ pagamento.vencimento }}</td>
+
+<td>
+
+<div class="d-flex flex-column flex-sm-row gap-2">
+
+<a href="/financeiro/pagar/{{ pagamento.id }}/"
+class="btn btn-sm btn-primary">
+
+✔ Pago
+
+</a>
+
+<a href="https://wa.me/{{ pagamento.aluno.telefone }}?text=Olá%20{{ pagamento.aluno.nome }}!%20Lembrete%20da%20mensalidade%20de%20R$%20{{ pagamento.valor }}%20que%20venceu%20em%20{{ pagamento.vencimento }}."
+class="btn btn-sm btn-success"
+target="_blank">
+
+📲 Cobrar
+
+</a>
+
+</div>
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="4" class="text-muted">
+
+Nenhum pagamento pendente
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}

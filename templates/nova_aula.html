@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">➕ Nova Aula</h1>
+
+<form method="POST">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label>Aluno</label>
+        <select name="aluno" class="form-control">
+            {% for aluno in alunos %}
+                <option value="{{ aluno.id }}">{{ aluno.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Data da aula</label>
+        <input type="datetime-local" name="data" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label>Duração (minutos)</label>
+        <input type="number" name="duracao_minutos" class="form-control" value="50">
+    </div>
+
+    <button class="btn btn-success">Salvar</button>
+</form>
+
+{% endblock %}

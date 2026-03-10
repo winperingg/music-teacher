@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">✏ Editar Aula</h1>
+
+<form method="POST" enctype="multipart/form-data">
+
+{% csrf_token %}
+
+<div class="mb-3">
+
+<label>Aluno</label>
+
+<select name="aluno" class="form-control">
+
+{% for aluno in alunos %}
+
+<option value="{{ aluno.id }}"
+{% if aluno.id == aula.aluno.id %}selected{% endif %}>
+
+{{ aluno.nome }}
+
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="mb-3">
+
+<label>Data</label>
+
+<input
+type="datetime-local"
+name="data"
+value="{{ aula.data|date:'Y-m-d\\TH:i' }}"
+class="form-control"
+>
+
+</div>
+
+
+<div class="mb-3">
+
+<label>Duração (minutos)</label>
+
+<input
+type="number"
+name="duracao_minutos"
+value="{{ aula.duracao_minutos }}"
+class="form-control"
+>
+
+</div>
+
+
+<div class="mb-3">
+
+<label>Conteúdo da aula</label>
+
+<textarea
+name="conteudo"
+class="form-control"
+rows="4"
+>
+
+{{ aula.conteudo }}
+
+</textarea>
+
+</div>
+
+
+<div class="mb-3">
+
+<label>Material da aula (PDF ou arquivo)</label>
+
+<input
+type="file"
+name="material"
+class="form-control"
+>
+
+{% if aula.material %}
+
+<p class="mt-2">
+
+Arquivo atual:
+<a href="{{ aula.material.url }}" target="_blank">
+
+Baixar material
+
+</a>
+
+</p>
+
+{% endif %}
+
+</div>
+
+
+<button class="btn btn-primary">
+
+Salvar aula
+
+</button>
+
+</form>
+
+{% endblock %}

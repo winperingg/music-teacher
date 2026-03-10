@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+
+<h1 class="mb-0">👨‍🎓 Alunos</h1>
+
+<a href="/alunos/novo/" class="btn btn-success">
+➕ Novo Aluno
+</a>
+
+</div>
+
+<div class="d-none d-md-block">
+
+<div class="card shadow-sm border-0">
+<div class="card-body">
+
+<div class="table-responsive">
+
+<table class="table align-middle">
+
+<thead>
+<tr>
+<th>Nome</th>
+<th>Telefone</th>
+<th>Email</th>
+<th>Instrumento</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for aluno in alunos %}
+
+<tr>
+
+<td>{{ aluno.nome }}</td>
+<td>{{ aluno.telefone }}</td>
+<td>{{ aluno.email }}</td>
+<td>{{ aluno.instrumento }}</td>
+
+<td>
+
+<div class="d-flex gap-2">
+
+<a href="/alunos/editar/{{ aluno.id }}/"
+class="btn btn-sm btn-primary">
+✏ Editar
+</a>
+
+<a href="/alunos/excluir/{{ aluno.id }}/"
+class="btn btn-sm btn-danger"
+onclick="return confirm('Excluir aluno?')">
+🗑 Excluir
+</a>
+
+</div>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+</div>
+
+</div>
+
+<div class="d-md-none">
+
+{% for aluno in alunos %}
+
+<div class="card shadow-sm border-0 mb-3">
+
+<div class="card-body">
+
+<h5 class="mb-2">{{ aluno.nome }}</h5>
+
+<p class="mb-1">
+📞 {{ aluno.telefone }}
+</p>
+
+<p class="mb-1">
+✉ {{ aluno.email }}
+</p>
+
+<p class="mb-3">
+🎸 {{ aluno.instrumento }}
+</p>
+
+<div class="d-flex gap-2">
+
+<a href="/alunos/editar/{{ aluno.id }}/"
+class="btn btn-primary btn-sm flex-fill">
+✏ Editar
+</a>
+
+<a href="/alunos/excluir/{{ aluno.id }}/"
+class="btn btn-danger btn-sm flex-fill"
+onclick="return confirm('Excluir aluno?')">
+🗑 Excluir
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endblock %}

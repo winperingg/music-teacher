@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">📅 Agenda</h1>
+
+<div class="alert alert-info">
+    Os lembretes aparecem se esta página estiver aberta no navegador.
+</div>
+
+<div id="calendar"></div>
+
+{{ eventos|json_script:"eventos-data" }}
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const eventos = JSON.parse(
+        document.getElementById("eventos-data").textContent
+    );
+
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    function mostrarNotificacao(titulo, corpo) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(titulo, { body: corpo });
+        } else {
+            alert(titulo + "\n" + corpo);
+        }
+    }
+
+    function agendarLembretes() {
+        const agora = new Date();
+
+        eventos.forEach(function(evento) {
+            const inicio = new Date(evento.start);
+            const fim = new Date(evento.end);
+
+            // 10 min antes de começar
+            const lembreteInicio = inicio.getTime() - (10 * 60 * 1000);
+            const tempoAteInicio = lembreteInicio - agora.getTime();
+
+            if (tempoAteInicio > 0) {
+                setTimeout(function() {
+                    mostrarNotificacao(
+                        "Aula vai começar 🎸",
+                        `${evento.title} começa em 10 minutos.`
+                    );
+                }, tempoAteInicio);
+            }
+
+            // 5 min antes de terminar
+            const lembreteFim = fim.getTime() - (5 * 60 * 1000);
+            const tempoAteFim = lembreteFim - agora.getTime();
+
+            if (tempoAteFim > 0) {
+                setTimeout(function() {
+                    mostrarNotificacao(
+                        "Aula está terminando ⏰",
+                        `${evento.title} termina em 5 minutos.`
+                    );
+                }, tempoAteFim);
+            }
+        });
+    }
+
+    const calendarEl = document.getElementById('calendar');
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        events: eventos,
+
+        dateClick: function(info) {
+            window.location.href = "/aulas/nova/?data=" + info.dateStr;
+        },
+
+        eventClick: function(info) {
+            window.location.href = "/aulas/editar/" + info.event.id + "/";
+        }
+    });
+
+    calendar.render();
+    agendarLembretes();
+});
+</script>
+
+{% endblock %}
