@@ -1,29 +1,84 @@
 import calendar
-import json
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
+import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Sum
-from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.csrf import csrf_exempt
 
 from alunos.models import Aluno
 from aulas.models import Aula
-from financeiro.models import Pagamento
+from financeiro.models import Assinatura, Pagamento
 
+
+# -------------------------------
+# FUNÇÕES AUXILIARES
+# -------------------------------
 
 def usuario_e_aluno(user):
     return Aluno.objects.filter(user=user).exists()
 
 
+def assinatura_valida(user):
+    try:
+        assinatura = Assinatura.objects.get(professor=user)
+        return assinatura.status == "ativa"
+    except Assinatura.DoesNotExist:
+        return False
+
+
+def criar_assinatura_mercadopago(payer_email, external_reference):
+    url = "https://api.mercadopago.com/preapproval"
+
+    headers = {
+        "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    data = {
+        "preapproval_plan_id": settings.MERCADOPAGO_PLAN_ID,
+        "reason": "Assinatura Music Teacher",
+        "payer_email": payer_email,
+        "external_reference": str(external_reference),
+        "back_url": f"{settings.SITE_URL}/assinatura/",
+        "status": "pending",
+    }
+
+    response = requests.post(url, json=data, headers=headers, timeout=30)
+    response.raise_for_status()
+    return response.json()
+
+
+def consultar_assinatura_mercadopago(preapproval_id):
+    url = f"https://api.mercadopago.com/preapproval/{preapproval_id}"
+
+    headers = {
+        "Authorization": f"Bearer {settings.MERCADOPAGO_ACCESS_TOKEN}",
+    }
+
+    response = requests.get(url, headers=headers, timeout=30)
+    response.raise_for_status()
+    return response.json()
+
+
+# -------------------------------
+# PÁGINA INICIAL
+# -------------------------------
+
 def inicio(request):
     return render(request, "inicio.html")
 
+
+# -------------------------------
+# LOGIN
+# -------------------------------
 
 def login_view(request):
     if request.method == "POST":
@@ -45,6 +100,10 @@ def login_view(request):
     return render(request, "login.html")
 
 
+# -------------------------------
+# CRIAR CONTA PROFESSOR
+# -------------------------------
+
 def criar_conta(request):
     if request.method == "POST":
         nome = request.POST.get("nome")
@@ -58,7 +117,7 @@ def criar_conta(request):
             return render(request, "criar_conta.html")
 
         if User.objects.filter(username=username).exists():
-            messages.error(request, "Esse nome de usuário já existe.")
+            messages.error(request, "Esse usuário já existe.")
             return render(request, "criar_conta.html")
 
         if User.objects.filter(email=email).exists():
@@ -72,20 +131,32 @@ def criar_conta(request):
             first_name=nome
         )
 
+        Assinatura.objects.create(
+            professor=user,
+            plano="mensal",
+            status="trial",
+            data_expiracao=date.today() + timedelta(days=7)
+        )
+
         login(request, user)
         return redirect("/dashboard/")
 
     return render(request, "criar_conta.html")
 
 
+# -------------------------------
+# DASHBOARD PROFESSOR
+# -------------------------------
+
 @login_required
 def dashboard(request):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    alunos_professor = Aluno.objects.filter(professor=request.user)
+    if not assinatura_valida(request.user):
+        return redirect("/assinatura/")
 
-    total_alunos = alunos_professor.count()
+    total_alunos = Aluno.objects.filter(professor=request.user).count()
 
     aulas_hoje = Aula.objects.filter(
         aluno__professor=request.user,
@@ -135,7 +206,7 @@ def dashboard(request):
         "valores": list(faturamento_mensal_map.values()),
     }
 
-    context = {
+    return render(request, "dashboard.html", {
         "total_alunos": total_alunos,
         "aulas_hoje": aulas_hoje,
         "pagamentos_pagos": pagamentos_pagos,
@@ -145,40 +216,16 @@ def dashboard(request):
         "grafico_pagamentos": grafico_pagamentos,
         "grafico_faturamento_mensal": grafico_faturamento_mensal,
         "eh_aluno": False,
-        "vapid_public_key": settings.VAPID_PUBLIC_KEY,
-    }
-
-    return render(request, "dashboard.html", context)
-
-
-@login_required
-def agenda(request):
-    if usuario_e_aluno(request.user):
-        return redirect("/meu-painel/")
-
-    aulas = Aula.objects.filter(
-        aluno__professor=request.user
-    ).order_by("data")
-
-    eventos = []
-    for aula in aulas:
-        eventos.append({
-            "id": aula.id,
-            "title": f"{aula.aluno.nome} ({aula.duracao_minutos} min)",
-            "start": aula.data.isoformat(),
-            "end": aula.fim.isoformat(),
-        })
-
-    return render(request, "agenda.html", {
-        "eventos": eventos,
-        "eh_aluno": False,
-        "vapid_public_key": settings.VAPID_PUBLIC_KEY,
     })
 
 
+# -------------------------------
+# PAINEL DO ALUNO
+# -------------------------------
+
 @login_required
 def painel_aluno(request):
-    aluno = Aluno.objects.get(user=request.user)
+    aluno = get_object_or_404(Aluno, user=request.user)
 
     aulas = Aula.objects.filter(aluno=aluno).order_by("data")
 
@@ -192,9 +239,12 @@ def painel_aluno(request):
         "aulas": aulas,
         "proxima_aula": proxima_aula,
         "eh_aluno": True,
-        "vapid_public_key": settings.VAPID_PUBLIC_KEY,
     })
 
+
+# -------------------------------
+# ALUNOS
+# -------------------------------
 
 @login_required
 def alunos(request):
@@ -207,7 +257,6 @@ def alunos(request):
         "alunos": lista_alunos,
         "eh_aluno": False,
     })
-
 
 
 @login_required
@@ -255,7 +304,9 @@ def novo_aluno(request):
         messages.success(request, "Aluno cadastrado com sucesso.")
         return redirect("/alunos/")
 
-    return render(request, "novo_aluno.html", {"eh_aluno": False})
+    return render(request, "novo_aluno.html", {
+        "eh_aluno": False
+    })
 
 
 @login_required
@@ -263,7 +314,7 @@ def editar_aluno(request, id):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    aluno = Aluno.objects.get(id=id, professor=request.user)
+    aluno = get_object_or_404(Aluno, id=id, professor=request.user)
 
     if request.method == "POST":
         aluno.nome = request.POST.get("nome")
@@ -278,7 +329,7 @@ def editar_aluno(request, id):
 
     return render(request, "editar_aluno.html", {
         "aluno": aluno,
-        "eh_aluno": False
+        "eh_aluno": False,
     })
 
 
@@ -287,10 +338,38 @@ def excluir_aluno(request, id):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    aluno = Aluno.objects.get(id=id, professor=request.user)
+    aluno = get_object_or_404(Aluno, id=id, professor=request.user)
     aluno.delete()
 
     return redirect("/alunos/")
+
+
+# -------------------------------
+# AGENDA / AULAS
+# -------------------------------
+
+@login_required
+def agenda(request):
+    if usuario_e_aluno(request.user):
+        return redirect("/meu-painel/")
+
+    aulas = Aula.objects.filter(
+        aluno__professor=request.user
+    ).order_by("data")
+
+    eventos = []
+    for aula in aulas:
+        eventos.append({
+            "id": aula.id,
+            "title": f"{aula.aluno.nome} ({getattr(aula, 'duracao_minutos', 50)} min)",
+            "start": aula.data.isoformat(),
+            "end": aula.fim.isoformat() if hasattr(aula, "fim") else aula.data.isoformat(),
+        })
+
+    return render(request, "agenda.html", {
+        "eventos": eventos,
+        "eh_aluno": False,
+    })
 
 
 @login_required
@@ -303,7 +382,7 @@ def nova_aula(request):
         data = request.POST.get("data")
         duracao_minutos = request.POST.get("duracao_minutos")
 
-        aluno = Aluno.objects.get(id=aluno_id, professor=request.user)
+        aluno = get_object_or_404(Aluno, id=aluno_id, professor=request.user)
 
         Aula.objects.create(
             aluno=aluno,
@@ -317,7 +396,7 @@ def nova_aula(request):
 
     return render(request, "nova_aula.html", {
         "alunos": alunos_lista,
-        "eh_aluno": False
+        "eh_aluno": False,
     })
 
 
@@ -326,7 +405,7 @@ def editar_aula(request, id):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    aula = Aula.objects.get(id=id, aluno__professor=request.user)
+    aula = get_object_or_404(Aula, id=id, aluno__professor=request.user)
 
     if request.method == "POST":
         aluno_id = request.POST.get("aluno")
@@ -334,12 +413,12 @@ def editar_aula(request, id):
         duracao_minutos = request.POST.get("duracao_minutos")
         conteudo = request.POST.get("conteudo")
 
-        aluno = Aluno.objects.get(id=aluno_id, professor=request.user)
+        aluno = get_object_or_404(Aluno, id=aluno_id, professor=request.user)
 
         aula.aluno = aluno
         aula.data = data
         aula.duracao_minutos = duracao_minutos or 50
-        aula.conteudo = conteudo
+        aula.conteudo = conteudo or ""
 
         if request.FILES.get("material"):
             aula.material = request.FILES.get("material")
@@ -353,7 +432,7 @@ def editar_aula(request, id):
     return render(request, "editar_aula.html", {
         "aula": aula,
         "alunos": alunos_lista,
-        "eh_aluno": False
+        "eh_aluno": False,
     })
 
 
@@ -362,10 +441,35 @@ def excluir_aula(request, id):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    aula = Aula.objects.get(id=id, aluno__professor=request.user)
+    aula = get_object_or_404(Aula, id=id, aluno__professor=request.user)
     aula.delete()
 
     return redirect("/agenda/")
+
+
+# -------------------------------
+# PAGAMENTOS
+# -------------------------------
+
+@login_required
+def pagamentos(request):
+    if usuario_e_aluno(request.user):
+        return redirect("/meu-painel/")
+
+    mes = request.GET.get("mes")
+
+    pagamentos_lista = Pagamento.objects.filter(
+        aluno__professor=request.user
+    ).order_by("vencimento")
+
+    if mes:
+        pagamentos_lista = pagamentos_lista.filter(vencimento__month=mes)
+
+    return render(request, "pagamentos.html", {
+        "pagamentos": pagamentos_lista,
+        "eh_aluno": False,
+        "mes_selecionado": mes,
+    })
 
 
 @login_required
@@ -406,40 +510,119 @@ def marcar_pago(request, id):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    pagamento = Pagamento.objects.get(id=id, aluno__professor=request.user)
+    pagamento = get_object_or_404(
+        Pagamento,
+        id=id,
+        aluno__professor=request.user
+    )
     pagamento.pago = True
     pagamento.save()
 
     return redirect("/dashboard/")
 
 
-
-
-@login_required
-def salvar_push_subscription(request):
-    return JsonResponse({"status": "ok"})
-
+# -------------------------------
+# ASSINATURA
+# -------------------------------
 
 @login_required
-def push_teste(request):
-    return redirect("/dashboard/")
-
-@login_required
-def pagamentos(request):
+def assinatura(request):
     if usuario_e_aluno(request.user):
         return redirect("/meu-painel/")
 
-    mes = request.GET.get("mes")
+    assinatura_obj, criada = Assinatura.objects.get_or_create(
+        professor=request.user,
+        defaults={
+            "plano": "mensal",
+            "status": "trial",
+            "data_expiracao": date.today() + timedelta(days=7)
+        }
+    )
 
-    pagamentos_lista = Pagamento.objects.filter(
-        aluno__professor=request.user
-    ).order_by("vencimento")
-
-    if mes:
-        pagamentos_lista = pagamentos_lista.filter(vencimento__month=mes)
-
-    return render(request, "pagamentos.html", {
-        "pagamentos": pagamentos_lista,
+    return render(request, "assinatura.html", {
+        "assinatura": assinatura_obj,
         "eh_aluno": False,
-        "mes_selecionado": mes,
     })
+
+
+@login_required
+def assinar_mercadopago(request):
+    if usuario_e_aluno(request.user):
+        return redirect("/meu-painel/")
+
+    assinatura_obj, criada = Assinatura.objects.get_or_create(
+        professor=request.user,
+        defaults={
+            "plano": "mensal",
+            "status": "trial",
+            "data_expiracao": date.today() + timedelta(days=7)
+        }
+    )
+
+    if not request.user.email:
+        messages.error(request, "Adicione um e-mail na sua conta antes de assinar.")
+        return redirect("/assinatura/")
+
+    try:
+        resultado = criar_assinatura_mercadopago(
+            payer_email=request.user.email,
+            external_reference=request.user.id
+        )
+
+        assinatura_obj.status = "pendente"
+        assinatura_obj.mp_preapproval_id = resultado.get("id")
+        assinatura_obj.mp_init_point = resultado.get("init_point")
+        assinatura_obj.save()
+
+        init_point = resultado.get("init_point")
+
+        if init_point:
+            return redirect(init_point)
+
+        messages.error(request, "Não foi possível iniciar a assinatura.")
+        return redirect("/assinatura/")
+
+    except Exception:
+        messages.error(request, "Erro ao conectar com o Mercado Pago.")
+        return redirect("/assinatura/")
+
+
+@csrf_exempt
+def webhook_mercadopago(request):
+    if request.method != "POST":
+        return HttpResponse(status=200)
+
+    topic = request.GET.get("topic") or request.GET.get("type")
+    preapproval_id = request.GET.get("id")
+
+    if not preapproval_id:
+        return HttpResponse(status=200)
+
+    try:
+        dados = consultar_assinatura_mercadopago(preapproval_id)
+    except Exception:
+        return HttpResponse(status=200)
+
+    external_reference = dados.get("external_reference")
+    mp_status = dados.get("status")
+
+    if not external_reference:
+        return HttpResponse(status=200)
+
+    try:
+        assinatura_obj = Assinatura.objects.get(professor_id=int(external_reference))
+    except Assinatura.DoesNotExist:
+        return HttpResponse(status=200)
+
+    assinatura_obj.mp_preapproval_id = dados.get("id", assinatura_obj.mp_preapproval_id)
+
+    if mp_status == "authorized":
+        assinatura_obj.status = "ativa"
+    elif mp_status in ["paused", "cancelled"]:
+        assinatura_obj.status = "cancelada"
+    elif mp_status == "pending":
+        assinatura_obj.status = "pendente"
+
+    assinatura_obj.save()
+
+    return HttpResponse(status=200)

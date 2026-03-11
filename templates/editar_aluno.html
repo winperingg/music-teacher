@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class="mb-4">✏ Editar Aluno</h1>
+
+<form method="POST">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label>Nome</label>
+        <input type="text" name="nome" value="{{ aluno.nome }}" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label>Telefone</label>
+        <input type="text" name="telefone" value="{{ aluno.telefone }}" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label>Email</label>
+        <input type="email" name="email" value="{{ aluno.email }}" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label>Instrumento</label>
+        <input type="text" name="instrumento" value="{{ aluno.instrumento }}" class="form-control">
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Salvar alterações
+    </button>
+
+    <a href="/alunos/" class="btn btn-secondary">
+        Voltar
+    </a>
+</form>
+
+{% endblock %}
