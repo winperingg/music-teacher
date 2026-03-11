@@ -4,6 +4,8 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 
+from django.contrib.auth import views as auth_views
+
 from .views import (
     inicio,
     dashboard,
@@ -49,6 +51,38 @@ urlpatterns = [
     path('criar-conta/', criar_conta, name='criar_conta'),
 
     path('pagamentos/', pagamentos, name='pagamentos'),
+
+    path(
+    'recuperar-senha/',
+    auth_views.PasswordResetView.as_view(
+        template_name='recuperar_senha.html'
+    ),
+    name='password_reset'
+),
+
+path(
+    'senha-enviada/',
+    auth_views.PasswordResetDoneView.as_view(
+        template_name='senha_enviada.html'
+    ),
+    name='password_reset_done'
+),
+
+path(
+    'reset/<uidb64>/<token>/',
+    auth_views.PasswordResetConfirmView.as_view(
+        template_name='nova_senha.html'
+    ),
+    name='password_reset_confirm'
+),
+
+path(
+    'senha-resetada/',
+    auth_views.PasswordResetCompleteView.as_view(
+        template_name='senha_resetada.html'
+    ),
+    name='password_reset_complete'
+),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

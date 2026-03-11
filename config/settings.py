@@ -121,3 +121,5 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 VAPID_PUBLIC_KEY = "SUA_CHAVE_PUBLICA"
 VAPID_PRIVATE_KEY = "SUA_CHAVE_PRIVADA"
 VAPID_ADMIN_EMAIL = "admin@email.com"
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
