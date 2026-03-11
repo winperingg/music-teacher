@@ -19,8 +19,8 @@ from .views import (
     excluir_aula,
     gerar_mensalidades,
     marcar_pago,
-    salvar_push_subscription,
-    push_teste,
+    criar_conta,
+    pagamentos,
 )
 
 urlpatterns = [
@@ -46,8 +46,9 @@ urlpatterns = [
     path('financeiro/gerar-mensalidades/', gerar_mensalidades, name='gerar_mensalidades'),
     path('financeiro/pagar/<int:id>/', marcar_pago, name='marcar_pago'),
 
-    path('push/subscribe/', salvar_push_subscription, name='salvar_push_subscription'),
-    path('push/teste/', push_teste, name='push_teste'),
+    path('criar-conta/', criar_conta, name='criar_conta'),
+
+    path('pagamentos/', pagamentos, name='pagamentos'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

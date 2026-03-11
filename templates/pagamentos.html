@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <h1 class="mb-0">💰 Pagamentos</h1>
+
+    <form method="GET" class="d-flex gap-2">
+        <select name="mes" class="form-select">
+            <option value="">Todos os meses</option>
+            <option value="1" {% if mes_selecionado == "1" %}selected{% endif %}>Janeiro</option>
+            <option value="2" {% if mes_selecionado == "2" %}selected{% endif %}>Fevereiro</option>
+            <option value="3" {% if mes_selecionado == "3" %}selected{% endif %}>Março</option>
+            <option value="4" {% if mes_selecionado == "4" %}selected{% endif %}>Abril</option>
+            <option value="5" {% if mes_selecionado == "5" %}selected{% endif %}>Maio</option>
+            <option value="6" {% if mes_selecionado == "6" %}selected{% endif %}>Junho</option>
+            <option value="7" {% if mes_selecionado == "7" %}selected{% endif %}>Julho</option>
+            <option value="8" {% if mes_selecionado == "8" %}selected{% endif %}>Agosto</option>
+            <option value="9" {% if mes_selecionado == "9" %}selected{% endif %}>Setembro</option>
+            <option value="10" {% if mes_selecionado == "10" %}selected{% endif %}>Outubro</option>
+            <option value="11" {% if mes_selecionado == "11" %}selected{% endif %}>Novembro</option>
+            <option value="12" {% if mes_selecionado == "12" %}selected{% endif %}>Dezembro</option>
+        </select>
+
+        <button type="submit" class="btn btn-dark">
+            Filtrar
+        </button>
+    </form>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+
+        <!-- Desktop -->
+        <div class="table-responsive d-none d-md-block">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Aluno</th>
+                        <th>Valor</th>
+                        <th>Vencimento</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pagamento in pagamentos %}
+                    <tr>
+                        <td>{{ pagamento.aluno.nome }}</td>
+                        <td>R$ {{ pagamento.valor }}</td>
+                        <td>{{ pagamento.vencimento }}</td>
+                        <td>
+                            {% if pagamento.pago %}
+                                <span class="badge bg-success">Pago</span>
+                            {% else %}
+                                <span class="badge bg-danger">Pendente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                {% if not pagamento.pago %}
+                                <a href="/financeiro/pagar/{{ pagamento.id }}/" class="btn btn-sm btn-primary">
+                                    ✔ Pago
+                                </a>
+                                {% endif %}
+
+                                <a href="https://wa.me/{{ pagamento.aluno.telefone }}?text=Olá%20{{ pagamento.aluno.nome }}!%20Lembrete%20da%20mensalidade%20de%20R$%20{{ pagamento.valor }}%20com%20vencimento%20em%20{{ pagamento.vencimento }}."
+                                   class="btn btn-sm btn-success"
+                                   target="_blank">
+                                    📲 Cobrar
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">Nenhum pagamento encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Celular -->
+        <div class="d-md-none">
+            {% for pagamento in pagamentos %}
+            <div class="border rounded p-3 mb-3">
+                <h6 class="mb-2">{{ pagamento.aluno.nome }}</h6>
+
+                <p class="mb-1"><strong>Valor:</strong> R$ {{ pagamento.valor }}</p>
+                <p class="mb-1"><strong>Vencimento:</strong> {{ pagamento.vencimento }}</p>
+                <p class="mb-3">
+                    <strong>Status:</strong>
+                    {% if pagamento.pago %}
+                        <span class="badge bg-success">Pago</span>
+                    {% else %}
+                        <span class="badge bg-danger">Pendente</span>
+                    {% endif %}
+                </p>
+
+                <div class="d-grid gap-2">
+                    {% if not pagamento.pago %}
+                    <a href="/financeiro/pagar/{{ pagamento.id }}/" class="btn btn-primary btn-sm">
+                        ✔ Marcar como pago
+                    </a>
+                    {% endif %}
+
+                    <a href="https://wa.me/{{ pagamento.aluno.telefone }}?text=Olá%20{{ pagamento.aluno.nome }}!%20Lembrete%20da%20mensalidade%20de%20R$%20{{ pagamento.valor }}%20com%20vencimento%20em%20{{ pagamento.vencimento }}."
+                       class="btn btn-success btn-sm"
+                       target="_blank">
+                        📲 Cobrar no WhatsApp
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-muted">Nenhum pagamento encontrado.</div>
+            {% endfor %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
