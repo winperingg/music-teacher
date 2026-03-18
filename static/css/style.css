@@ -1,0 +1,6 @@
+body {
+    background-image: url("/static/images/background.jpg");
+    background-size: cover;       /* cobre toda a tela */
+    background-repeat: no-repeat; /* não repete */
+    background-position: center;  /* centraliza */
+}
