@@ -7,18 +7,14 @@
         <div class="col-md-5">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h2 class="mb-4">Recuperar senha</h2>
+                    <h2 class="mb-4">Nova senha</h2>
 
                     <form method="post">
                         {% csrf_token %}
+                        {{ form.as_p }}
 
-                        <div class="mb-3">
-                            <label>E-mail</label>
-                            <input type="email" name="email" class="form-control" required>
-                        </div>
-
-                        <button class="btn btn-primary w-100">
-                            Enviar link de recuperação
+                        <button class="btn btn-success w-100">
+                            Alterar senha
                         </button>
                     </form>
                 </div>

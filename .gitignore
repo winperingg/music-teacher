@@ -1,0 +1,15 @@
+# Ignorar arquivos de ambiente
+.env
+
+# Ignorar arquivos compilados do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar migrations compiladas
+*/migrations/__pycache__/
+
+# Ignorar arquivos temporários
+*.log
+*.sqlite3

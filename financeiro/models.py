@@ -9,22 +9,13 @@ class Pagamento(models.Model):
     pago = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.aluno.nome} - {self.valor}"
+        return f"{self.aluno.nome} - R$ {self.valor}"
 
 
 class Assinatura(models.Model):
-    STATUS_CHOICES = [
-        ("trial", "Trial"),
-        ("pendente", "Pendente"),
-        ("ativa", "Ativa"),
-        ("cancelada", "Cancelada"),
-        ("expirada", "Expirada"),
-    ]
-
     professor = models.OneToOneField(User, on_delete=models.CASCADE)
     plano = models.CharField(max_length=50, default="mensal")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="trial")
-    data_inicio = models.DateField(auto_now_add=True)
+    status = models.CharField(max_length=20, default="trial")
     data_expiracao = models.DateField(null=True, blank=True)
 
     mp_preapproval_id = models.CharField(max_length=120, blank=True, null=True)

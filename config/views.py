@@ -15,12 +15,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from alunos.models import Aluno
 from aulas.models import Aula
-from financeiro.models import Assinatura, Pagamento
+from financeiro.models import Pagamento, Assinatura
 
-
-# -------------------------------
-# FUNÇÕES AUXILIARES
-# -------------------------------
 
 def usuario_e_aluno(user):
     return Aluno.objects.filter(user=user).exists()
@@ -29,7 +25,14 @@ def usuario_e_aluno(user):
 def assinatura_valida(user):
     try:
         assinatura = Assinatura.objects.get(professor=user)
-        return assinatura.status == "ativa"
+
+        if assinatura.status == "ativa":
+            return True
+
+        if assinatura.status == "trial" and assinatura.data_expiracao and assinatura.data_expiracao >= date.today():
+            return True
+
+        return False
     except Assinatura.DoesNotExist:
         return False
 
@@ -68,17 +71,9 @@ def consultar_assinatura_mercadopago(preapproval_id):
     return response.json()
 
 
-# -------------------------------
-# PÁGINA INICIAL
-# -------------------------------
-
 def inicio(request):
     return render(request, "inicio.html")
 
-
-# -------------------------------
-# LOGIN
-# -------------------------------
 
 def login_view(request):
     if request.method == "POST":
@@ -100,10 +95,6 @@ def login_view(request):
     return render(request, "login.html")
 
 
-# -------------------------------
-# CRIAR CONTA PROFESSOR
-# -------------------------------
-
 def criar_conta(request):
     if request.method == "POST":
         nome = request.POST.get("nome")
@@ -120,7 +111,7 @@ def criar_conta(request):
             messages.error(request, "Esse usuário já existe.")
             return render(request, "criar_conta.html")
 
-        if User.objects.filter(email=email).exists():
+        if email and User.objects.filter(email=email).exists():
             messages.error(request, "Esse e-mail já está cadastrado.")
             return render(request, "criar_conta.html")
 
@@ -143,10 +134,6 @@ def criar_conta(request):
 
     return render(request, "criar_conta.html")
 
-
-# -------------------------------
-# DASHBOARD PROFESSOR
-# -------------------------------
 
 @login_required
 def dashboard(request):
@@ -219,10 +206,6 @@ def dashboard(request):
     })
 
 
-# -------------------------------
-# PAINEL DO ALUNO
-# -------------------------------
-
 @login_required
 def painel_aluno(request):
     aluno = get_object_or_404(Aluno, user=request.user)
@@ -241,10 +224,6 @@ def painel_aluno(request):
         "eh_aluno": True,
     })
 
-
-# -------------------------------
-# ALUNOS
-# -------------------------------
 
 @login_required
 def alunos(request):
@@ -344,10 +323,6 @@ def excluir_aluno(request, id):
     return redirect("/alunos/")
 
 
-# -------------------------------
-# AGENDA / AULAS
-# -------------------------------
-
 @login_required
 def agenda(request):
     if usuario_e_aluno(request.user):
@@ -359,12 +334,20 @@ def agenda(request):
 
     eventos = []
     for aula in aulas:
-        eventos.append({
+        titulo = aula.aluno.nome
+        if hasattr(aula, "duracao_minutos"):
+            titulo = f"{titulo} ({aula.duracao_minutos} min)"
+
+        evento = {
             "id": aula.id,
-            "title": f"{aula.aluno.nome} ({getattr(aula, 'duracao_minutos', 50)} min)",
+            "title": titulo,
             "start": aula.data.isoformat(),
-            "end": aula.fim.isoformat() if hasattr(aula, "fim") else aula.data.isoformat(),
-        })
+        }
+
+        if hasattr(aula, "fim"):
+            evento["end"] = aula.fim.isoformat()
+
+        eventos.append(evento)
 
     return render(request, "agenda.html", {
         "eventos": eventos,
@@ -384,11 +367,15 @@ def nova_aula(request):
 
         aluno = get_object_or_404(Aluno, id=aluno_id, professor=request.user)
 
-        Aula.objects.create(
-            aluno=aluno,
-            data=data,
-            duracao_minutos=duracao_minutos or 50
-        )
+        kwargs = {
+            "aluno": aluno,
+            "data": data,
+        }
+
+        if hasattr(Aula, "duracao_minutos"):
+            kwargs["duracao_minutos"] = duracao_minutos or 50
+
+        Aula.objects.create(**kwargs)
 
         return redirect("/agenda/")
 
@@ -417,10 +404,14 @@ def editar_aula(request, id):
 
         aula.aluno = aluno
         aula.data = data
-        aula.duracao_minutos = duracao_minutos or 50
-        aula.conteudo = conteudo or ""
 
-        if request.FILES.get("material"):
+        if hasattr(aula, "duracao_minutos"):
+            aula.duracao_minutos = duracao_minutos or 50
+
+        if hasattr(aula, "conteudo"):
+            aula.conteudo = conteudo or ""
+
+        if request.FILES.get("material") and hasattr(aula, "material"):
             aula.material = request.FILES.get("material")
 
         aula.save()
@@ -446,10 +437,6 @@ def excluir_aula(request, id):
 
     return redirect("/agenda/")
 
-
-# -------------------------------
-# PAGAMENTOS
-# -------------------------------
 
 @login_required
 def pagamentos(request):
@@ -485,7 +472,7 @@ def gerar_mensalidades(request):
 
     for aluno in alunos_lista:
         ultimo_dia = calendar.monthrange(ano, mes)[1]
-        dia_vencimento = min(aluno.dia_vencimento, ultimo_dia)
+        dia_vencimento = min(getattr(aluno, "dia_vencimento", 10), ultimo_dia)
         vencimento = date(ano, mes, dia_vencimento)
 
         existe = Pagamento.objects.filter(
@@ -497,7 +484,7 @@ def gerar_mensalidades(request):
         if not existe:
             Pagamento.objects.create(
                 aluno=aluno,
-                valor=aluno.valor_mensalidade,
+                valor=getattr(aluno, "valor_mensalidade", 0),
                 vencimento=vencimento,
                 pago=False
             )
@@ -520,10 +507,6 @@ def marcar_pago(request, id):
 
     return redirect("/dashboard/")
 
-
-# -------------------------------
-# ASSINATURA
-# -------------------------------
 
 @login_required
 def assinatura(request):
@@ -579,11 +562,11 @@ def assinar_mercadopago(request):
         if init_point:
             return redirect(init_point)
 
-        messages.error(request, "Não foi possível iniciar a assinatura.")
+        messages.error(request, "Mercado Pago não retornou link de pagamento.")
         return redirect("/assinatura/")
 
-    except Exception:
-        messages.error(request, "Erro ao conectar com o Mercado Pago.")
+    except Exception as e:
+        messages.error(request, f"Erro ao conectar com Mercado Pago: {str(e)}")
         return redirect("/assinatura/")
 
 
@@ -592,9 +575,7 @@ def webhook_mercadopago(request):
     if request.method != "POST":
         return HttpResponse(status=200)
 
-    topic = request.GET.get("topic") or request.GET.get("type")
     preapproval_id = request.GET.get("id")
-
     if not preapproval_id:
         return HttpResponse(status=200)
 

@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-change-this'
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     "music-teacher.onrender.com",
@@ -123,8 +123,17 @@ VAPID_PRIVATE_KEY = "SUA_CHAVE_PRIVADA"
 VAPID_ADMIN_EMAIL = "admin@email.com"
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@musicteacher.com'
 
 MERCADOPAGO_ACCESS_TOKEN = "APP_USR-4365315076905971-031115-627005877ad0c9adf569ba94a457d324-215957052"
 MERCADOPAGO_PLAN_ID = "4365315076905971"
 MERCADOPAGO_WEBHOOK_SECRET = "3slMtOCBARy0jGq30Y21pkFVri7hnNjo"
 SITE_URL = "https://music-teacher.onrender.com"
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = 'SG.sua_chave_aqui'  # sua API Key completa
+DEFAULT_FROM_EMAIL = 'kleysoncruzeiro.soares490@gmail.com'
